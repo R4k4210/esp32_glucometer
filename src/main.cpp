@@ -1,10 +1,8 @@
 #include <Arduino.h>
-#include "wifi_service.h"
-
-WifiService wifiService;
+#include <wifi_service.h>
 
 void setup() {
-  wifiService.scan();
+  wifi_service_scan();
 }
 
 void loop() {

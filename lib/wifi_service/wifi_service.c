@@ -1,37 +1,13 @@
 #include "wifi_service.h"
-#include "nvs_flash.h"
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "esp_event_loop.h"
 
-void WifiService::init(){
+void wifi_service_init(){
     nvs_flash_init();
     tcpip_adapter_init();
 }
 
-void WifiService::scan(){   
-    init();
-
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    // Let us test a WiFi scan ... 
-    wifi_scan_config_t scanConf = {
-        .ssid = NULL,
-        .bssid = NULL,
-        .channel = 0,
-        .show_hidden = 1
-    };
-    ESP_ERROR_CHECK(esp_wifi_scan_start(&scanConf, 0));
-}
-
 // Here you can  find the list of errors code of type esp_err_t 
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/error-codes.html
-esp_err_t WifiService::event_handler(void *ctx, system_event_t *event){
+esp_err_t event_handler(void *ctx, system_event_t *event){
     // Check if Scan ends
     if(event->event_id == SYSTEM_EVENT_SCAN_DONE){ // the arrow points to a struct property
         printf("Number  of access points found: %d\n", event->event_info.scan_done.number);
@@ -77,4 +53,23 @@ esp_err_t WifiService::event_handler(void *ctx, system_event_t *event){
     }
 
     return ESP_OK;
+}
+
+void wifi_service_scan(){   
+    wifi_service_init();
+
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    // Let us test a WiFi scan ... 
+    wifi_scan_config_t scanConf = {
+        .ssid = NULL,
+        .bssid = NULL,
+        .channel = 0,
+        .show_hidden = 1
+    };
+    ESP_ERROR_CHECK(esp_wifi_scan_start(&scanConf, 0));
 }
