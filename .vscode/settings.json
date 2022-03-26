@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "esp_system.h": "c"
+        "esp_system.h": "c",
+        "event_groups.h": "c",
+        "esp_event.h": "c",
+        "esp_event_legacy.h": "c",
+        "esp_log.h": "c",
+        "esp32-hal-log.h": "c"
     }
 }
