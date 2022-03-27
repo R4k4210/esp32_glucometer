@@ -21,7 +21,7 @@
 typedef struct {
     char ssid[32];
     char password[64];
-} wifi_service_sta_config_t;
+} ws_config_t;
 
 
 #ifndef _WIFI_SERVICE_H_
@@ -31,11 +31,10 @@ typedef struct {
         extern "C" {
     #endif
 
-        void wifi_service_init(void);
         void wifi_service_scan(void);
-        void wifi_service_connect();
+        void wifi_service_sta_connect(void);
         void wifi_service_set_sta_config(char *_ssid, char *_password);
-        wifi_service_sta_config_t wifi_service_get_sta_config();
+        ws_config_t wifi_service_get_sta_config();
     
     #ifdef __cplusplus
         }
