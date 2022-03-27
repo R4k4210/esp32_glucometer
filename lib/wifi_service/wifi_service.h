@@ -36,10 +36,6 @@ typedef struct {
         void wifi_service_connect();
         void wifi_service_set_sta_config(char *_ssid, char *_password);
         wifi_service_sta_config_t wifi_service_get_sta_config();
-        //void wifi_service_set_ssid(char *_ssid);
-        //char wifi_service_get_ssid(void);
-        //void wifi_service_set_password(char *_password);
-        //char wifi_service_get_password(void);
     
     #ifdef __cplusplus
         }

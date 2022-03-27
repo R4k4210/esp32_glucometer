@@ -4,9 +4,6 @@
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
-char *ssid;
-char *password;
-
 wifi_service_sta_config_t config;
 
 void wifi_service_set_sta_config(char *_ssid, char *_password){
@@ -17,24 +14,6 @@ void wifi_service_set_sta_config(char *_ssid, char *_password){
 wifi_service_sta_config_t wifi_service_get_sta_config(){
     return config;
 }
-
-/*
-void wifi_service_set_ssid(char *_ssid){
-    strcpy(ssid, _ssid);
-}
-
-char wifi_service_get_ssid(){
-    return *ssid;
-}
-
-void wifi_service_set_password(char *_password){
-    strcpy(password, _password);
-}
-
-char wifi_service_get_password(){
-    return *password;
-};
-*/
 
 void wifi_service_init(){
     nvs_flash_init();
