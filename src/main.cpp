@@ -2,8 +2,8 @@
 #include "wifi_service.h"
 
 void setup() {
-  char *ssid = "Ragnarok";
-  char *password = "Puna1104RakaMit";
+  char *ssid = "test";
+  char *password = "test";
   wifi_service_set_sta_config(ssid, password);
   wifi_service_connect();
 }
