@@ -32,7 +32,9 @@ typedef struct {
     #endif
 
         void wifi_service_scan(void);
+        void wifi_service_ap_init(void);
         void wifi_service_sta_connect(void);
+        void wifi_service_ap_connect(void);
         void wifi_service_set_sta_config(char *_ssid, char *_password);
         ws_config_t wifi_service_get_sta_config();
     

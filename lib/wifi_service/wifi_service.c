@@ -12,6 +12,7 @@ void wifi_service_init(){
     tcpip_adapter_init();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    
 }
 
 // Here you can  find the list of errors code of type esp_err_t 
@@ -83,6 +84,19 @@ static esp_err_t connect_event_handler(void *ctx, system_event_t *event){
                 printf("Connect to the AP fail\n");
                 break;
             }
+        case SYSTEM_EVENT_AP_START:
+            printf("Started ESP32 AP\n");
+            break;
+        case SYSTEM_EVENT_AP_STACONNECTED:
+            printf("station:"MACSTR" join, AID=%d\n", 
+                    MAC2STR(event->event_info.sta_connected.mac), 
+                    event->event_info.sta_connected.aid);            
+            break;
+        case SYSTEM_EVENT_AP_STADISCONNECTED:            
+            printf("station:"MACSTR"leave, AID=%d\n",
+                    MAC2STR(event->event_info.sta_disconnected.mac),
+                    event->event_info.sta_disconnected.aid);
+            break;
         default:
             break;
     }
@@ -102,6 +116,28 @@ void wifi_service_sta_connect(){
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+}
+
+void wifi_service_ap_connect(){
+    wifi_service_init();
+
+    ESP_ERROR_CHECK(esp_event_loop_init(connect_event_handler, NULL));
+    //WIFI_AUTH_WPA_WPA2_PSK needs 8 characters password or will loop on reboot
+    wifi_config_t ap_config = {
+        .ap = {
+            .ssid = "test",
+            .ssid_len = strlen("test"),
+            .channel = 1,
+            .password = "test1234", 
+            .max_connection = 1,
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK, 
+        }
+    };
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
 }
 
 void wifi_service_scan(){   

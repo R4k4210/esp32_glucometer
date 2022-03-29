@@ -5,7 +5,8 @@ void setup() {
   char *ssid = "Ragnarok";
   char *password = "Puna1104RakaMit";
   wifi_service_set_sta_config(ssid, password);
-  wifi_service_sta_connect();
+  //wifi_service_sta_connect();
+  wifi_service_ap_connect();
 }
 
 void loop() {
