@@ -7,13 +7,15 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include <driver/gpio.h>
+#include "mqtt_client.h"
 
 #include "wifi_manager.h"
+#include "mqtt_service.h"
 
 #define LED GPIO_NUM_27 
 
 /* @brief tag used for ESP serial console messages */
-static const char TAG[] = "main";
+static const char TAG[] = "MAIN";
 
 
 void blink_led(void *pvParameter){
@@ -38,6 +40,7 @@ void monitoring_task(void *pvParameter){
 
 	for(;;){
 		ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
+		//ESP_LOGI(TAG, "aws ----->> %s", aws_root_c1_pem_start);
 		vTaskDelay(pdMS_TO_TICKS(10000));
 	}
 	
@@ -56,6 +59,8 @@ void cb_connection_ok(void *pvParameter){
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
 
 	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
+
+	mqtt_service_start();
 }
 
 //Pin Input - Leer si fue presionado. Si fue presionado -> Interrupción -> Ejecuta lógica de glucómetro
@@ -64,11 +69,30 @@ void cb_connection_ok(void *pvParameter){
 //Pin Output - Mostrar en pantalla (Ssd1306 OLED 128x32).
 //Batería - Batería Mini De Lítio Regargable 3.7v 500mah.
 //Investigar - Como dormir al micro (Ahorro de energía).
+//AWS IoT Core Configuration
+//Device data endpoint: a2ldx62x5vd0yr-ats.iot.us-west-2.amazonaws.com
+//AWS Thing name: ESP32_BLOOD_GLUCOMETER
+//Policy name: BLOOD_GLUCOMETER_POLICY
+//Policy ARN: arn:aws:iot:us-west-2:774183190014:policy/BLOOD_GLUCOMETER_POLICY
+//Connect policy resource: ESP32_BLOOD_GLUCOMETER
+//Resource ARN: arn:aws:iot:region:account:resource/resourceName -> https://docs.aws.amazon.com/iot/latest/developerguide/shadow-provision-cloud.html
+//Connect: arn:aws:iot:us-west-2:774183190014:client/ESP32_BLOOD_GLUCOMETER
+//Publish: arn:aws:iot:us-west-2:774183190014:topic/bldgluco/v1/pub
+//Subscribe: arn:aws:iot:us-west-2:774183190014:topicfilter/bldgluco/v1/sub
 
+//AWS EC2 Mosquitto MQTT
+//IAM: AWS_IoT_Config_Access
+//Instance Name: MQTT_BROKER
+//KeyPair: ESP32_EC2_MQTT_BROKER
+//chmod 400 ESP32_EC2_MQTT_BROKER -> Cambiamos el permiso a 400 para que no pueda ser leido
+//ssh -i ESP32_EC2_MQTT_BROKER.pem ubuntu@ec2-3-237-194-32.compute-1.amazonaws.com
+//Install Mosquitto to EC2: https://aws.amazon.com/es/blogs/iot/how-to-bridge-mosquitto-mqtt-broker-to-aws-iot/
+//aws iot attach-principal-policy --policy-name bridgeMQTT --principal arn:aws:iot:us-east-1:774183190014:cert/8e1e58ae3f8a7f2bc7feccac7ecf27421d123cd1448004f564052e8e6fd56133
+//"endpointAddress": "a2ldx62x5vd0yr-ats.iot.us-east-1.amazonaws.com"
 
 void app_main(void){
 	//You can register task before wifi manager start and with different priority
-	xTaskCreate(&blink_led, "blink_led", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	//xTaskCreate(&blink_led, "blink_led", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 	/* start the wifi manager */
 	wifi_manager_start();

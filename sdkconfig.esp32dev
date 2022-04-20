@@ -127,6 +127,15 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# MQTT Configuration params
+#
+CONFIG_AWS_THING_NAME="ESP32_BLOOD_GLUCOMETER"
+CONFIG_MQTT_BROKER_URI="mqtts://a2ldx62x5vd0yr-ats.iot.us-west-2.amazonaws.com:8883"
+CONFIG_MQTT_BROKER_HOST="a2ldx62x5vd0yr-ats.iot.us-west-2.amazonaws.com"
+CONFIG_MQTT_BROKER_PORT=8883
+# end of MQTT Configuration params
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

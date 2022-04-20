@@ -1,0 +1,31 @@
+menu "MQTT Configuration params"
+
+config AWS_THING_NAME
+    string "AWS Thing name"
+    default "ESP32_BLOOD_GLUCOMETER"
+    help
+    Check Thing section at AWS IoT Core
+
+config MQTT_BROKER_URI
+    string "Broker uri"
+    default "mqtts://test.mosquitto.org:8883"
+    help
+    URI is formed by <transport>://<broker_host>:<port>.
+    If URI is used, the other params are ignored.
+
+config MQTT_BROKER_HOST
+    string "Broker host"
+    default "2ldx62x5vd0yr-ats.iot.us-west-2.amazonaws.com"
+    help
+    In case you are using AWS, this url is at IoT Core > Settings
+
+config MQTT_BROKER_PORT
+    int "Broker Port number"
+    default 8883
+    help
+    In general, port 8883 is for secured MQTT connections.
+    Port 443 requires use of the ALPN TLS extension with the ALPN protocol name.
+    When using port 8883, ALPN is not required.
+
+endmenu
+
