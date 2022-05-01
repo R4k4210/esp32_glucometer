@@ -12,3 +12,19 @@
 void mqtt_service_start(void);
 
 
+/*
+{
+   device: {
+	   mac_address: "ASC-ASDASD-ADASDA",
+	   version: "1.0.1"
+   },
+   status: {
+	   battery: 55,
+	   wifi: "blablabla"
+   },
+   data: {
+	   glucometer: 160,
+	   timestamp: 1234567
+   }
+}
+*/
