@@ -1,5 +1,7 @@
 #include "adc_service.h"
 
+static const char *TAG = "ADC";
+
 static void check_efuse(void){
 	//Check if TP is burned into eFuse
     if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
@@ -27,7 +29,7 @@ static void print_char_val_type(esp_adc_cal_value_t val_type){
 
 void adc_service_adc1_config(void){
 	//Check if Two Point or Vref are burned into eFuse
-    check_efuse();
+    //check_efuse();
 
 	//Configure ADC
     if (unit == ADC_UNIT_1) {
@@ -38,13 +40,12 @@ void adc_service_adc1_config(void){
     }
 
 	//Characterize ADC
-    adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, ADC1_ATTEN, width, DEFAULT_VREF, adc_chars);
-    print_char_val_type(val_type);
+    //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, ADC1_ATTEN, width, DEFAULT_VREF, adc_chars);
+    //print_char_val_type(val_type);
 }
 
-void adc_service_adc1_read(void){
-
+int adc_service_adc1_read(void){
 	uint32_t adc_reading = 0;
 	//Multisampling
 	for (int i = 0; i < NO_OF_SAMPLES; i++) {
@@ -57,7 +58,8 @@ void adc_service_adc1_read(void){
 		}
 	}
 	adc_reading /= NO_OF_SAMPLES;
-	//Convert adc_reading to voltage in mV
-	uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
-	ESP_LOGI(TAG, "Raw: %d\tVoltage: %dmV\n", adc_reading, voltage);
+	//Convert adc_reading to voltage in mV using eFuse
+	//uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
+	//ESP_LOGI(TAG, "Raw: %d\tVoltage: %dmV\n", adc_reading, voltage);
+    return adc_reading;
 }
