@@ -1,6 +1,11 @@
 {
     "files.associations": {
         "core_mqtt.h": "c",
-        "gpio_types.h": "c"
+        "gpio_types.h": "c",
+        "string.h": "c",
+        "esp_wifi.h": "c",
+        "esp_log.h": "c",
+        "oled_service.h": "c",
+        "stdio.h": "c"
     }
 }

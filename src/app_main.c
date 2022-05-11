@@ -15,15 +15,13 @@
 //Custom libraries
 #include "mqtt_service.h"
 #include "adc_service.h"
+#include "oled_service.h"
 
 #define BTN_SENSE 				GPIO_NUM_19
 #define LED_EMITER 				GPIO_NUM_23
 
 #define LOW  					0
 #define HIGH 					1
-
-//mqtt_service_start();
-//wifi_manager_disconnect_async();
 
 static const char TAG[] = "MAIN";
 int last_state = HIGH;
@@ -52,13 +50,18 @@ void cpu_main(void *pvParameter){
 
 	for(;;){
 		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
+		//vTaskDelay(pdMS_TO_TICKS(10000));
+
+		oled_service_write("MIDIENDO...", false);
+		vTaskDelay(pdMS_TO_TICKS(3000));
+
 		/*
 		int btn_state = gpio_get_level(BTN_SENSE);
 		vTaskDelay(pdMS_TO_TICKS(100));
 		if(btn_state == LOW && last_state == HIGH){ //This is inverted because is pulled-up
 			//last_state = LOW;
 			ESP_LOGI(TAG, "Button pressed: %d", btn_state);
-		}*/
+		}
 
 		sensor_value = adc_service_adc1_read();
 
@@ -90,6 +93,9 @@ void cpu_main(void *pvParameter){
 				ESP_LOGI(TAG, "Glucose: %d mg/dl\tVoltage: %fV\n", difference, voltage);
 			}
 		}
+		*/
+
+
 	}
 	
 	//If we want to delete the stask
@@ -98,20 +104,18 @@ void cpu_main(void *pvParameter){
 
 void cb_connection_ok(void *pvParameter){
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
-
 	/* transform IP to human readable string */
 	char str_ip[16];
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
-
 	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
+	//mqtt_service_start();
+	//wifi_manager_disconnect_async();
 }
 
 void app_main(void){
-	//xTaskCreate(&read_btn, "read_btn", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 	init_gpio_config();
+	oled_service_init();
 	//wifi_manager_start();
 	//wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
-
 	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);
 }
-
