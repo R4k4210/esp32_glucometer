@@ -6,6 +6,7 @@
         "esp_wifi.h": "c",
         "esp_log.h": "c",
         "oled_service.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "cjson.h": "c"
     }
 }

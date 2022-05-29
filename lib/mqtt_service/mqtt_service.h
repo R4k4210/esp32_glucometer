@@ -1,5 +1,6 @@
 #include "mqtt_client.h"
 #include "esp_log.h"
+#include "cJSON.h"
 
 
 #define MQTT_THING_NAME       CONFIG_AWS_THING_NAME
@@ -9,22 +10,12 @@
 #define AWS_PUBLISH_TOPIC     "bldgluco/v1/pub"
 #define AWS_SUBSCRIBE_TOPIC   "bldgluco/v1/sub"
 
+esp_mqtt_client_handle_t mqtt_client;
+bool mqtt_subscribed = false;
+cJSON *mqtt_message;
+cJSON *mqtt_message_device;
+cJSON *mqtt_message_data;
+cJSON *mqtt_message_status;
+
 void mqtt_service_start(void);
-
-
-/*
-{
-   device: {
-	   mac_address: "ASC-ASDASD-ADASDA",
-	   version: "1.0.1"
-   },
-   status: {
-	   battery: 55,
-	   wifi: "blablabla"
-   },
-   data: {
-	   glucometer: 160,
-	   timestamp: 1234567
-   }
-}
-*/
+void mqtt_service_pub(void);

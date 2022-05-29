@@ -45,15 +45,59 @@ void init_gpio_config(void){
    	ESP_LOGI(TAG, "GPIO config finished.");
 }
 
+void write_json_message(int glucose){
+	/* Example structure
+	{
+		device: {
+			mac_address: "ASC-ASDASD-ADASDA",
+			version: "1.0.1"
+		},
+		status: {
+			battery: 55,
+			wifi: "blablabla"
+		},
+		data: {
+			glucometer: 160,
+			timestamp: 1234567
+		}
+	}
+	*/
+
+	mqtt_message = cJSON_CreateObject();
+	mqtt_message_data = cJSON_CreateObject();
+	mqtt_message_device = cJSON_CreateObject();
+	mqtt_message_status = cJSON_CreateObject();
+	//MAC Address
+	unsigned char mac_base[6] = {0};
+	esp_efuse_mac_get_default(mac_base);
+	ESP_LOGI(TAG, "MAC ADDRESS: %s", mac_base);
+	//sprintf("%02X:%02X:%02X:%02X:%02X:%02X", mac_base[0],mac_base[1],mac_base[2],mac_base[3],mac_base[4],mac_base[5]);
+	//device
+	cJSON_AddStringToObject(mqtt_message_device, "version", "1.0.0");
+	//cJSON_AddNumberToObject(mqtt_message_device, "mac_address", mac_base); //Esto debe ser string
+	cJSON_AddStringToObject(mqtt_message_device, "type", "glucometer");
+	//status
+	cJSON_AddNumberToObject(mqtt_message_status, "battery", 100);
+	//data
+	cJSON_AddNumberToObject(mqtt_message_data, "glucose", glucose);
+	struct timeval tv_now;
+	gettimeofday(&tv_now, NULL);
+	int64_t time_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+	cJSON_AddNumberToObject(mqtt_message_data, "timestamp", time_us);
+	//device
+	cJSON_AddItemToObject(mqtt_message, "device", mqtt_message_device);
+	//status
+	cJSON_AddItemToObject(mqtt_message, "status", mqtt_message_status);
+	//data
+	cJSON_AddItemToObject(mqtt_message, "data", mqtt_message_data);
+}
+
 void cpu_main(void *pvParameter){
 	ESP_LOGI(TAG, "Running main code.");
 
 	for(;;){
 		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
 		//vTaskDelay(pdMS_TO_TICKS(10000));
-
-		oled_service_write("MIDIENDO...", false);
-		vTaskDelay(pdMS_TO_TICKS(3000));
 
 		/*
 		int btn_state = gpio_get_level(BTN_SENSE);
@@ -62,6 +106,7 @@ void cpu_main(void *pvParameter){
 			//last_state = LOW;
 			ESP_LOGI(TAG, "Button pressed: %d", btn_state);
 		}
+		*/
 
 		sensor_value = adc_service_adc1_read();
 
@@ -91,16 +136,22 @@ void cpu_main(void *pvParameter){
 				min_value = 4095;
 				float voltage = difference * 3.3 / 4095;
 				ESP_LOGI(TAG, "Glucose: %d mg/dl\tVoltage: %fV\n", difference, voltage);
+				write_json_message(difference);
+				mqtt_service_pub();
 			}
 		}
-		*/
-
 
 	}
 	
-	//If we want to delete the stask
+	//If we want to delete the task
 	vTaskDelete(NULL);
 }
+
+/*
+	void print_mac(const unsigned char *mac) {
+		printf("%02X:%02X:%02X:%02X:%02X:%02X", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+	}
+*/
 
 void cb_connection_ok(void *pvParameter){
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
@@ -108,14 +159,14 @@ void cb_connection_ok(void *pvParameter){
 	char str_ip[16];
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
 	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
-	//mqtt_service_start();
+	mqtt_service_start();
 	//wifi_manager_disconnect_async();
 }
 
 void app_main(void){
 	init_gpio_config();
 	oled_service_init();
-	//wifi_manager_start();
-	//wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+	wifi_manager_start();
+	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
 	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);
 }
