@@ -127,7 +127,7 @@ void get_measurement(void){
 				gpio_set_level(LED_EMITER, LOW);
 				emiter_state = LOW;
 
-				if(c == (NO_OF_SECUENCES - 1)){
+				if(c == (NO_OF_SENSED - 1)){
 					int difference = max_value - min_value;
 					avg_value += difference;
 					float voltage = difference * 3.3 / 4095;
@@ -187,7 +187,7 @@ void cpu_main(void *pvParameter){
 			}
 			// Wait here if they are still holding it
 			while(!gpio_get_level(BTN_SENSE)){
-				vTaskDelay(100 / portTICK_PERIOD_MS);
+				vTaskDelay(pdMS_TO_TICKS(100));
 			}
 			ESP_LOGI(TAG, "BTN Released.");
 		}
@@ -209,6 +209,10 @@ void cpu_main(void *pvParameter){
 	vTaskDelete(NULL);
 }
 
+void cb_connecting(void *pvParameter){
+	oled_service_write("Conectando a la red...", false);
+}
+
 void cb_connection_ok(void *pvParameter){
 	oled_service_write("Conectado a la red", false);
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
@@ -218,10 +222,6 @@ void cb_connection_ok(void *pvParameter){
 	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
 
 	mqtt_service_start();
-}
-
-void cb_connecting(void *pvParameter){
-	oled_service_write("Conectando a la red...", false);
 }
 
 void cb_disconnected(void *pvParameter){
