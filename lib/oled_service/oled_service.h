@@ -1,3 +1,6 @@
+#ifndef _OLED_SERVICE_H_
+#define _OLED_SERVICE_H_
+
 #include <string.h>
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
@@ -22,3 +25,5 @@ void oled_service_vertical_scroll(char text[]);
 void oled_service_horizontal_scroll(char text[]);
 void oled_service_invert(void);
 void oled_service_fade_out(void);
+
+#endif /* _OLED_SERVICE_H_ */

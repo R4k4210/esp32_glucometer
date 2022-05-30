@@ -21,6 +21,10 @@ const esp_mqtt_client_config_t mqtt_config = {
     .client_key_pem = (const char*)private_key_start
 };
 
+mqtt_service_t service_data = {
+    .mqtt_subscribed = false,
+};
+
 static void log_error_if_nonzero(const char *message, int error_code){
     if (error_code != 0) {
         ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
@@ -46,11 +50,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-            mqtt_subscribed = true;
+            service_data.mqtt_subscribed = true;
             break;
         case MQTT_EVENT_UNSUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-            mqtt_subscribed = false;
+            service_data.mqtt_subscribed = false;
             break;
         case MQTT_EVENT_PUBLISHED:
             ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
@@ -76,23 +80,23 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 void mqtt_service_start(void){
-    mqtt_client = esp_mqtt_client_init(&mqtt_config);
+    service_data.mqtt_client = esp_mqtt_client_init(&mqtt_config);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-    esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(mqtt_client);
+    esp_mqtt_client_register_event(service_data.mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(service_data.mqtt_client);
+}
+
+void mqtt_service_stop(void){
+    esp_mqtt_client_stop(service_data.mqtt_client);
 }
 
 void mqtt_service_pub(void){
-    if(!mqtt_subscribed){
-        //"{\"glucose\":121.5}"
-        char *stringify_message = cJSON_Print(mqtt_message);
+    if(service_data.mqtt_subscribed){
+        char *stringify_message = cJSON_Print(service_data.mqtt_message);
         ESP_LOGI(TAG, "Message to send: %s", stringify_message);
-        //int sended = esp_mqtt_client_publish(mqtt_client, AWS_PUBLISH_TOPIC, stringify_message, 0, 0, 0);
+        //int sended = esp_mqtt_client_publish(service_data.mqtt_client, AWS_PUBLISH_TOPIC, stringify_message, 0, 0, 0);
         //ESP_LOGI(TAG, "Sent publish successful, msg_id=%d", sended);
-        cJSON_Delete(mqtt_message);
-        cJSON_Delete(mqtt_message_data);
-        cJSON_Delete(mqtt_message_device);
-        cJSON_Delete(mqtt_message_status);
+        cJSON_Delete(service_data.mqtt_message);
     }else{
         ESP_LOGI(TAG, "MQTT is not suscribed");
     }
