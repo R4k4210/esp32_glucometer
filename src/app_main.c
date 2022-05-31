@@ -96,6 +96,7 @@ void write_json_message(int glucose){
 }
 
 void get_measurement(void){
+	//oled_service_write("MIDIENDO...", false);
 	is_measuring = true;
 	float avg_value = 0;
 
@@ -140,13 +141,16 @@ void get_measurement(void){
 	avg_value /= NO_OF_SECUENCES;
 	char oled_msg[50];
 	snprintf(oled_msg, sizeof(oled_msg),"%g mg/dL",avg_value);
-	oled_service_write(oled_msg, false);
+	//oled_service_write(oled_msg, false);
+
+	vTaskDelay(pdMS_TO_TICKS(10000));
 
 	if(service_data.mqtt_subscribed){
 		write_json_message(avg_value);
 		ESP_LOGI(TAG, "Call MQTT_SERVICE Pub method");
-		oled_service_write("Enviando datos...", false);
+		//oled_service_write("ENVIANDO...", false);
 		mqtt_service_pub();
+		//oled_service_write("ENVIADO", false);
 	}
 
 	is_measuring = false;
@@ -156,6 +160,9 @@ void cpu_main(void *pvParameter){
 	ESP_LOGI(TAG, "Running main code.");
 
 	for(;;){
+
+		oled_service_measure(125.49);
+
 		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
 		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
@@ -209,12 +216,10 @@ void cpu_main(void *pvParameter){
 	vTaskDelete(NULL);
 }
 
-void cb_connecting(void *pvParameter){
-	oled_service_write("Conectando a la red...", false);
-}
-
 void cb_connection_ok(void *pvParameter){
-	oled_service_write("Conectado a la red", false);
+	//oled_service_write("CONECTADO", false);
+	//vTaskDelay(pdMS_TO_TICKS(3000));
+	//oled_service_fade_out();
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
 	/* transform IP to human readable string */
 	char str_ip[16];
@@ -231,8 +236,12 @@ void cb_disconnected(void *pvParameter){
 void app_main(void){
 	init_gpio_config();
 	oled_service_init();
+	//Presentation
+	//oled_service_write("GLUCOMETRO", false);
+	//vTaskDelay(pdMS_TO_TICKS(3000));
+	//oled_service_fade_out();
+	//End presentation
 	wifi_manager_start();
-	wifi_manager_set_callback(WM_ORDER_CONNECT_STA, &cb_connecting);
 	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
 	wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
 	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);

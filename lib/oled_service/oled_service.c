@@ -2,6 +2,23 @@
 
 static const char *TAG = "OLED";
 
+static uint8_t drop[] = {
+		0b00000001, 0b00000000, 0b00000000,
+		0b00000011, 0b10000000, 0b00000000,
+		0b00000111, 0b11000010, 0b00000000,
+		0b00001111, 0b11100111, 0b00000000,
+		0b00011111, 0b11001111, 0b10000000,
+		0b00111111, 0b10011111, 0b11000000,
+		0b00111111, 0b00111111, 0b11100000,
+		0b01000111, 0b00100111, 0b11100000,
+		0b01000111, 0b00100111, 0b11100000,
+		0b01000111, 0b00100001, 0b11100000,
+		0b01000001, 0b00100001, 0b11100000,
+		0b00110001, 0b10011111, 0b11000000,
+		0b00001111, 0b11000000, 0b00000000,
+	};
+
+
 void oled_service_init(void){
     ESP_LOGI(TAG, "Init I2C interface as Master...");
 	i2c_master_init(&dev, OLED_SDA, OLED_SCL, -1);
@@ -95,32 +112,30 @@ void oled_service_fade_out(void){
 	ssd1306_fadeout(&dev);
 }
 
-
-/*
-// Display Count Down
-	uint8_t image[24];
-	memset(image, 0, sizeof(image));
-	ssd1306_display_image(&dev, top, (6*8-1), image, sizeof(image));
-	ssd1306_display_image(&dev, top+1, (6*8-1), image, sizeof(image));
-	ssd1306_display_image(&dev, top+2, (6*8-1), image, sizeof(image));
-	for(int font=0x39;font>0x30;font--) {
-		memset(image, 0, sizeof(image));
-		ssd1306_display_image(&dev, top+1, (7*8-1), image, 8);
-		memcpy(image, font8x8_basic_tr[font], 8);
-		if (dev._flip) ssd1306_flip(image, 8);
-		ssd1306_display_image(&dev, top+1, (7*8-1), image, 8);
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-	}
-
-
+void oled_service_measure(float glucose){
 	ssd1306_clear_screen(&dev, false);
-	ssd1306_contrast(&dev, 0xff);
-  	ssd1306_display_text_x3(&dev, 0, "Hello World", 11, false);
-	vTaskDelay(pdMS_TO_TICKS(3000));
 
-	ssd1306_display_text(&dev, 0, "SSD1306 128x32", 14, false);
-	ssd1306_display_text(&dev, 1, "Hello World!!", 13, false);
-	ssd1306_display_text(&dev, 2, "SSD1306 128x32", 14, true);
-	ssd1306_display_text(&dev, 3, "Hello World!!", 13, true);
-	vTaskDelay(pdMS_TO_TICKS(3000));
-*/
+	ssd1306_display_text(&dev, 3, "           mg/dL", 16, false);
+	vTaskDelay(pdMS_TO_TICKS(100));
+
+	char glu_val[50];
+	snprintf(glu_val, sizeof(glu_val),"%d",(int)(glucose + .5));
+	ssd1306_display_text_x3(&dev, top, glu_val, strlen(glu_val), false);
+	vTaskDelay(pdMS_TO_TICKS(100));
+
+	int bitmapWidth = 3*8;
+	int width = ssd1306_get_width(&dev);
+	int xpos = width - 18; // center of width
+	xpos = xpos - bitmapWidth/2; 
+	ESP_LOGD(TAG, "width=%d xpos=%d", width, xpos);
+
+	ssd1306_bitmaps(&dev, xpos, 0, drop, 24, 13, false);
+	vTaskDelay(pdMS_TO_TICKS(100));
+
+	/*
+	for(int i=0;i<128;i++) {
+		ssd1306_wrap_arround(&dev, SCROLL_DOWN, 2, 3, 0);
+	}
+	vTaskDelay(2000 / portTICK_PERIOD_MS);
+	*/
+}
