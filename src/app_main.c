@@ -25,14 +25,88 @@
 #define NO_OF_SECUENCES			2
 #define NO_OF_SENSED			4
 #define LONG_PRESS_IN_SECONDS   10
+#define RESET_TIME_IN_SECONDS	30
 
 static const char TAG[] = "MAIN";
 int last_state = HIGH;
 int emiter_state = LOW;
 bool oled_is_in_use = false;
 bool is_measuring = false;
+bool is_wifi_connected = false;
+
 uint16_t ticks = 0;
 extern mqtt_service_t service_data; //Extern reference the same value name and type in other .c file.
+
+void init_gpio_config(void);
+void write_json_message(int glucose);
+void get_measurement(void);
+void cb_connection_ok(void *pvParameter);
+void cb_disconnected(void *pvParameter);
+
+void cpu_main(void *pvParameter){
+	ESP_LOGI(TAG, "Running main code.");
+
+	for(;;){
+
+		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
+		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
+		//vTaskDelay(pdMS_TO_TICKS(10000));
+
+		// Debounce
+		vTaskDelay(pdMS_TO_TICKS(50));
+		// Re-Read Button State After Debounce
+		if (!gpio_get_level(BTN_SENSE)){
+			ESP_LOGI(TAG, "BTN Pressed Down.");
+			ticks = 0;
+			// Loop here while pressed until user lets go, or longer that set time
+			while ((!gpio_get_level(BTN_SENSE)) && (++ticks < LONG_PRESS_IN_SECONDS * 100)){
+				vTaskDelay(pdMS_TO_TICKS(10));
+			} 
+			// Did fall here because user held a long press or let go for a short press
+			if (ticks >= LONG_PRESS_IN_SECONDS * 100){
+				ESP_LOGI(TAG, "Long Press");
+				if(is_wifi_connected && !is_measuring){
+					wifi_manager_disconnect_async();
+				}
+			}else{
+				ESP_LOGI(TAG, "Short Press");
+				if(!is_measuring){
+					get_measurement();
+				}
+			}
+			// Wait here if they are still holding it
+			//If you hold to reset, wifi will be disconnected
+			while(!gpio_get_level(BTN_SENSE)){
+				if(++ticks >= RESET_TIME_IN_SECONDS * 100){
+					ESP_LOGI(TAG, "BTN Reset.");
+					esp_restart();
+				}
+			}
+			ESP_LOGI(TAG, "BTN Released.");
+		}
+
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	
+	//If we want to delete the task
+	vTaskDelete(NULL);
+}
+
+void app_main(void){
+	init_gpio_config();
+	oled_service_init();
+	//Presentation
+	oled_service_write("GLUCOMETRO", false);
+	vTaskDelay(pdMS_TO_TICKS(3000));
+	oled_service_clean();
+	
+	//End presentation
+	wifi_manager_start();
+	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+	wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
+	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);
+}
 
 void init_gpio_config(void){
 	ESP_LOGI(TAG, "Configuring digital GPIO");
@@ -52,14 +126,15 @@ void write_json_message(int glucose){
 	{
 		device: {
 			mac_address: "ASC-ASDASD-ADASDA",
-			version: "1.0.1"
+			version: "1.0.1",
+			type: "glucometer"
 		},
 		status: {
 			battery: 55,
 			wifi: "blablabla"
 		},
 		data: {
-			glucometer: 160,
+			glucose: 160,
 			timestamp: 1234567
 		}
 	}
@@ -96,7 +171,6 @@ void write_json_message(int glucose){
 }
 
 void get_measurement(void){
-	//oled_service_write("MIDIENDO...", false);
 	is_measuring = true;
 	float avg_value = 0;
 
@@ -107,6 +181,13 @@ void get_measurement(void){
 		int sensor_value = 0;
 
 		for(int c=0; c < NO_OF_SENSED; c++){
+			char m_msg[3][3] = {".", "..", "..."};
+			char m_dest[11] = "MIDIENDO";
+			if((c+1) < 4){
+				strncat(m_dest, m_msg[c], 3);
+			}
+			oled_service_write(m_dest, false);
+
 			ESP_LOGI(TAG, "NO OF SENSE %d", c+1);
 			sensor_value = adc_service_adc1_read();
 
@@ -139,87 +220,30 @@ void get_measurement(void){
 	}
 
 	avg_value /= NO_OF_SECUENCES;
-	char oled_msg[50];
-	snprintf(oled_msg, sizeof(oled_msg),"%g mg/dL",avg_value);
-	//oled_service_write(oled_msg, false);
+	oled_service_clean();
+	oled_service_measure(avg_value);
 
-	vTaskDelay(pdMS_TO_TICKS(10000));
+	vTaskDelay(pdMS_TO_TICKS(5000));
 
-	if(service_data.mqtt_subscribed){
+	if(is_wifi_connected && service_data.mqtt_subscribed){
+		oled_service_write("ENVIANDO...", false);
 		write_json_message(avg_value);
-		ESP_LOGI(TAG, "Call MQTT_SERVICE Pub method");
-		//oled_service_write("ENVIANDO...", false);
+		//Pub to AWS
 		mqtt_service_pub();
-		//oled_service_write("ENVIADO", false);
+		oled_service_write("ENVIADO", false);
+		vTaskDelay(pdMS_TO_TICKS(1500));
+		oled_service_clean();
 	}
 
 	is_measuring = false;
 }
 
-void cpu_main(void *pvParameter){
-	ESP_LOGI(TAG, "Running main code.");
-
-	for(;;){
-
-		oled_service_measure(125.49);
-
-		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-        //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
-		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
-		//vTaskDelay(pdMS_TO_TICKS(10000));
-
-		// Wait here to detect press
-		while(gpio_get_level(BTN_SENSE)){
-			vTaskDelay(pdMS_TO_TICKS(125));
-		}
-		// Debounce
-		vTaskDelay(pdMS_TO_TICKS(50));
-		// Re-Read Button State After Debounce
-		if (!gpio_get_level(BTN_SENSE)){
-			ESP_LOGI(TAG, "BTN Pressed Down.");
-			ticks = 0;
-			// Loop here while pressed until user lets go, or longer that set time
-			while ((!gpio_get_level(BTN_SENSE)) && (++ticks < LONG_PRESS_IN_SECONDS * 100)){
-				vTaskDelay(pdMS_TO_TICKS(10));
-			} 
-			// Did fall here because user held a long press or let go for a short press
-			if (ticks >= LONG_PRESS_IN_SECONDS * 100){
-				ESP_LOGI(TAG, "Long Press");
-				wifi_manager_disconnect_async();
-			}else{
-				ESP_LOGI(TAG, "Short Press");
-				if(!is_measuring){
-					get_measurement();
-				}
-			}
-			// Wait here if they are still holding it
-			while(!gpio_get_level(BTN_SENSE)){
-				vTaskDelay(pdMS_TO_TICKS(100));
-			}
-			ESP_LOGI(TAG, "BTN Released.");
-		}
-
-		vTaskDelay(pdMS_TO_TICKS(100));
-/*
-		int btn_state = gpio_get_level(BTN_SENSE);
-		vTaskDelay(pdMS_TO_TICKS(100));
-		if(btn_state == LOW && last_state == HIGH){ //This is inverted because is pulled-up
-			//last_state = LOW;
-			ESP_LOGI(TAG, "Button pressed: %d", btn_state);
-			get_measurement();
-			
-		}
-*/
-	}
-	
-	//If we want to delete the task
-	vTaskDelete(NULL);
-}
-
 void cb_connection_ok(void *pvParameter){
-	//oled_service_write("CONECTADO", false);
-	//vTaskDelay(pdMS_TO_TICKS(3000));
-	//oled_service_fade_out();
+	is_wifi_connected = true;
+	oled_service_write("CONECTADO", false);
+	vTaskDelay(pdMS_TO_TICKS(3000));
+	oled_service_clean();
+	
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
 	/* transform IP to human readable string */
 	char str_ip[16];
@@ -230,19 +254,6 @@ void cb_connection_ok(void *pvParameter){
 }
 
 void cb_disconnected(void *pvParameter){
+	is_wifi_connected = false;
 	mqtt_service_stop();
-}
-
-void app_main(void){
-	init_gpio_config();
-	oled_service_init();
-	//Presentation
-	//oled_service_write("GLUCOMETRO", false);
-	//vTaskDelay(pdMS_TO_TICKS(3000));
-	//oled_service_fade_out();
-	//End presentation
-	wifi_manager_start();
-	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
-	wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
-	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);
 }

@@ -93,9 +93,8 @@ void mqtt_service_stop(void){
 void mqtt_service_pub(void){
     if(service_data.mqtt_subscribed){
         char *stringify_message = cJSON_Print(service_data.mqtt_message);
-        ESP_LOGI(TAG, "Message to send: %s", stringify_message);
-        //int sended = esp_mqtt_client_publish(service_data.mqtt_client, AWS_PUBLISH_TOPIC, stringify_message, 0, 0, 0);
-        //ESP_LOGI(TAG, "Sent publish successful, msg_id=%d", sended);
+        int sended = esp_mqtt_client_publish(service_data.mqtt_client, AWS_PUBLISH_TOPIC, stringify_message, 0, 0, 0);
+        ESP_LOGI(TAG, "Sent publish successful, msg_id=%d", sended);
         cJSON_Delete(service_data.mqtt_message);
     }else{
         ESP_LOGI(TAG, "MQTT is not suscribed");

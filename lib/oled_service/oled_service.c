@@ -30,6 +30,10 @@ void oled_service_init(void){
 	ESP_LOGI(TAG, "SSD1306 128x32 config finished");
 }
 
+void oled_service_clean(void){
+	ssd1306_clear_screen(&dev, false);
+}
+
 void oled_service_write(char text[], bool invert){
 	ssd1306_clear_screen(&dev, false);
 	ssd1306_contrast(&dev, 0xff);
@@ -108,10 +112,6 @@ void oled_service_invert(void){
 	vTaskDelay(pdMS_TO_TICKS(5000));
 }
 
-void oled_service_fade_out(void){
-	ssd1306_fadeout(&dev);
-}
-
 void oled_service_measure(float glucose){
 	ssd1306_clear_screen(&dev, false);
 
@@ -131,11 +131,4 @@ void oled_service_measure(float glucose){
 
 	ssd1306_bitmaps(&dev, xpos, 0, drop, 24, 13, false);
 	vTaskDelay(pdMS_TO_TICKS(100));
-
-	/*
-	for(int i=0;i<128;i++) {
-		ssd1306_wrap_arround(&dev, SCROLL_DOWN, 2, 3, 0);
-	}
-	vTaskDelay(2000 / portTICK_PERIOD_MS);
-	*/
 }

@@ -24,7 +24,7 @@ void oled_service_page_down(void);
 void oled_service_vertical_scroll(char text[]);
 void oled_service_horizontal_scroll(char text[]);
 void oled_service_invert(void);
-void oled_service_fade_out(void);
 void oled_service_measure(float glucose);
+void oled_service_clean(void);
 
 #endif /* _OLED_SERVICE_H_ */
