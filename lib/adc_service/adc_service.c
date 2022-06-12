@@ -58,6 +58,7 @@ int adc_service_adc1_read(void){
 		}
 	}
 	adc_reading /= NO_OF_SAMPLES;
+
 	//Convert adc_reading to voltage in mV using eFuse
 	//uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 	//ESP_LOGI(TAG, "Raw: %d\tVoltage: %dmV\n", adc_reading, voltage);

@@ -8,7 +8,6 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "esp_adc_cal.h"
-#include "driver/adc.h"
 #include "mqtt_client.h"
 #include "wifi_manager.h"
 
@@ -23,7 +22,7 @@
 #define LOW  					0
 #define HIGH 					1
 #define NO_OF_SECUENCES			2
-#define NO_OF_SENSED			4
+#define PERIOD_IN_MILLIS		4000
 #define LONG_PRESS_IN_SECONDS   10
 #define RESET_TIME_IN_SECONDS	30
 
@@ -51,7 +50,12 @@ void cpu_main(void *pvParameter){
 		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
 		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
-		//vTaskDelay(pdMS_TO_TICKS(10000));
+		
+		/*
+		if(!is_measuring){
+			get_measurement();
+		}
+		*/
 
 		// Debounce
 		vTaskDelay(pdMS_TO_TICKS(50));
@@ -87,6 +91,7 @@ void cpu_main(void *pvParameter){
 		}
 
 		vTaskDelay(pdMS_TO_TICKS(100));
+	
 	}
 	
 	//If we want to delete the task
@@ -102,9 +107,9 @@ void app_main(void){
 	oled_service_clean();
 	
 	//End presentation
-	wifi_manager_start();
-	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
-	wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
+	//wifi_manager_start();
+	//wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+	//wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
 	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);
 }
 
@@ -122,24 +127,6 @@ void init_gpio_config(void){
 }
 
 void write_json_message(int glucose){
-	/* Example structure
-	{
-		device: {
-			mac_address: "ASC-ASDASD-ADASDA",
-			version: "1.0.1",
-			type: "glucometer"
-		},
-		status: {
-			battery: 55,
-			wifi: "blablabla"
-		},
-		data: {
-			glucose: 160,
-			timestamp: 1234567
-		}
-	}
-	*/
-
 	service_data.mqtt_message = cJSON_CreateObject();
 	service_data.mqtt_message_data = cJSON_CreateObject();
 	service_data.mqtt_message_device = cJSON_CreateObject();
@@ -170,25 +157,26 @@ void write_json_message(int glucose){
 	cJSON_AddItemToObject(service_data.mqtt_message, "data", service_data.mqtt_message_data);
 }
 
+int get_millis(void){
+	return esp_timer_get_time() / 1000;
+}
+
 void get_measurement(void){
 	is_measuring = true;
 	float avg_value = 0;
 
 	for(int i=0; i < NO_OF_SECUENCES; i++) {
-		ESP_LOGI(TAG, "NO OF SECUENCES %d", i+1);
 		int max_value = 0;
-		int min_value = 4095;
+		int min_value = 1023;
 		int sensor_value = 0;
+		int sensor_counter = 0;
+		int last_time = get_millis();
+		int oled_counter = 0;
 
-		for(int c=0; c < NO_OF_SENSED; c++){
-			char m_msg[3][3] = {".", "..", "..."};
-			char m_dest[11] = "MIDIENDO";
-			if((c+1) < 4){
-				strncat(m_dest, m_msg[c], 3);
-			}
-			oled_service_write(m_dest, false);
+		while((get_millis() - last_time) <= PERIOD_IN_MILLIS){
+			//ESP_LOGI(TAG, "time %d", get_millis() - last_time);
+			vTaskDelay(pdMS_TO_TICKS(10));		
 
-			ESP_LOGI(TAG, "NO OF SENSE %d", c+1);
 			sensor_value = adc_service_adc1_read();
 
 			if(sensor_value > max_value){
@@ -198,28 +186,43 @@ void get_measurement(void){
 			if(sensor_value < min_value){
 				min_value = sensor_value;
 			}
+		
+			//ESP_LOGI(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
 
-			ESP_LOGI(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
-			vTaskDelay(pdMS_TO_TICKS(500));
-			
-			if(emiter_state == LOW){
-				gpio_set_level(LED_EMITER, HIGH);
-				emiter_state = HIGH;
-			}else{
-				gpio_set_level(LED_EMITER, LOW);
-				emiter_state = LOW;
+			if((get_millis() - last_time) % 500 == 0){
 
-				if(c == (NO_OF_SENSED - 1)){
-					int difference = max_value - min_value;
-					avg_value += difference;
-					float voltage = difference * 3.3 / 4095;
-					ESP_LOGI(TAG, "Glucose: %d mg/dl\tVoltage: %fV\n", difference, voltage);
+				char m_msg[3][3] = {".", "..", "..."};
+				char m_dest[11] = "MIDIENDO";
+				if((oled_counter+1) < 4){
+					strncat(m_dest, m_msg[oled_counter], 3);
+				}
+				oled_service_write(m_dest, false);	
+
+				oled_counter++;
+
+				if(emiter_state == LOW){
+					gpio_set_level(LED_EMITER, HIGH);
+					emiter_state = HIGH;
+				}else{
+					gpio_set_level(LED_EMITER, LOW);
+					emiter_state = LOW;
+					sensor_counter++;
+
+					if(sensor_counter == 3){
+						int difference = max_value - min_value;
+						ESP_LOGI(TAG, "ADC READ FINAL DIFFERENCE %d", difference);
+						avg_value += difference;
+						//float voltage = difference * 3.3 / 4095.0;
+						//ESP_LOGI(TAG, "Partial Glucose: %d mg/dl\tVoltage: %fV\n", difference, voltage);
+					}
 				}
 			}
 		}
 	}
-
+	
 	avg_value /= NO_OF_SECUENCES;
+	ESP_LOGI(TAG, "Final Glucose: %g mg/dl", avg_value);
+	
 	oled_service_clean();
 	oled_service_measure(avg_value);
 
@@ -236,6 +239,7 @@ void get_measurement(void){
 	}
 
 	is_measuring = false;
+	oled_service_clean();
 }
 
 void cb_connection_ok(void *pvParameter){
