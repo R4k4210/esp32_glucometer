@@ -18,6 +18,7 @@
 
 #define BTN_SENSE 				GPIO_NUM_19
 #define LED_EMITER 				GPIO_NUM_23
+#define BATTERY_LEVEL           GPIO_NUM_33
 
 #define LOW  					0
 #define HIGH 					1
@@ -29,9 +30,11 @@
 static const char TAG[] = "MAIN";
 int last_state = HIGH;
 int emiter_state = LOW;
+int battery_level = 0;
 bool oled_is_in_use = false;
 bool is_measuring = false;
 bool is_wifi_connected = false;
+bool bat_r_once = true;
 
 uint16_t ticks = 0;
 extern mqtt_service_t service_data; //Extern reference the same value name and type in other .c file.
@@ -39,6 +42,7 @@ extern mqtt_service_t service_data; //Extern reference the same value name and t
 void init_gpio_config(void);
 void write_json_message(int glucose);
 void get_measurement(void);
+void get_battery_level(void);
 void cb_connection_ok(void *pvParameter);
 void cb_disconnected(void *pvParameter);
 
@@ -46,7 +50,6 @@ void cpu_main(void *pvParameter){
 	ESP_LOGI(TAG, "Running main code.");
 
 	for(;;){
-
 		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
 		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
@@ -56,12 +59,12 @@ void cpu_main(void *pvParameter){
 			get_measurement();
 		}
 		*/
-
+        /*
 		// Debounce
 		vTaskDelay(pdMS_TO_TICKS(50));
 		// Re-Read Button State After Debounce
-		if (!gpio_get_level(BTN_SENSE)){
-			ESP_LOGI(TAG, "BTN Pressed Down.");
+		//if (!gpio_get_level(BTN_SENSE)){
+			//ESP_LOGI(TAG, "BTN Pressed Down.");
 			ticks = 0;
 			// Loop here while pressed until user lets go, or longer that set time
 			while ((!gpio_get_level(BTN_SENSE)) && (++ticks < LONG_PRESS_IN_SECONDS * 100)){
@@ -87,11 +90,12 @@ void cpu_main(void *pvParameter){
 					esp_restart();
 				}
 			}
-			ESP_LOGI(TAG, "BTN Released.");
-		}
-
-		vTaskDelay(pdMS_TO_TICKS(100));
-	
+			//ESP_LOGI(TAG, "BTN Released.");
+		//}
+	    */
+		//vTaskDelay(pdMS_TO_TICKS(100));
+		vTaskDelay(pdMS_TO_TICKS(2000));
+		get_battery_level();
 	}
 	
 	//If we want to delete the task
@@ -240,6 +244,28 @@ void get_measurement(void){
 
 	is_measuring = false;
 	oled_service_clean();
+}
+
+void get_battery_level(void){
+	uint32_t adc_value = 0;
+	float calibration = 0.36;
+	float voltage_cutoff = 3.3;
+
+	adc_value = adc_service_adc1_5_read();
+
+	float voltage = ((adc_value * voltage_cutoff) / 1024) * 2 + calibration;
+	float f_bat_lvl = (voltage - voltage_cutoff) * (100 - 0) / (4.2 - voltage_cutoff) + 0;
+
+	if (bat_r_once){
+		bat_r_once = false;
+		battery_level = (int)(f_bat_lvl - .5);
+	}
+	
+	if ((battery_level > battery_level + 5 || battery_level < battery_level - 5)){
+		battery_level = (int)(f_bat_lvl - .5);
+	}
+ 
+	ESP_LOGI(TAG, "Raw: %d\tVoltage: %f\nBattery Level: %d\n", adc_value, voltage, battery_level);
 }
 
 void cb_connection_ok(void *pvParameter){
