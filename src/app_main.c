@@ -231,7 +231,7 @@ void get_measurement(void){
 	if(is_wifi_connected && service_data.mqtt_subscribed){
 		oled_service_write("ENVIANDO...", false);
 		write_json_message(avg_value);
-		//Pub to AWS
+		//Pub to AWS 
 		mqtt_service_pub();
 		oled_service_write("ENVIADO", false);
 		vTaskDelay(pdMS_TO_TICKS(1500));
