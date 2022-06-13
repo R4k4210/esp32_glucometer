@@ -107,9 +107,9 @@ void app_main(void){
 	oled_service_clean();
 	
 	//End presentation
-	//wifi_manager_start();
-	//wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
-	//wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
+	wifi_manager_start();
+	wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+	wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &cb_disconnected);
 	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 1, NULL, 1);
 }
 
