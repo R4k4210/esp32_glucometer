@@ -29,12 +29,12 @@ void buzzer_service_init(void){
 
 void buzzer_service_sound(int duration, int times){
     for(int i=0; i<times; i++){
-        ESP_LOGI(TAG, "Buzzer sonando");
         ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY); // 0x7F - 12% duty - play here for your speaker or buzzer
         ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
         vTaskDelay(pdMS_TO_TICKS(duration));
         // stop
         ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
         ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+        vTaskDelay(pdMS_TO_TICKS(250));
     }  
 };
