@@ -317,9 +317,8 @@ void write_actions(void *pvParameter){
 
 void cb_connection_ok(void *pvParameter){
 	is_wifi_connected = true;
-	buzzer_service_sound(SHORT, WIFI_CONNECTED);
 	oled_service_write("WIFI CONECTADO", O_PAGE_2, false);
-	vTaskDelay(pdMS_TO_TICKS(3000));
+	buzzer_service_sound(SHORT, WIFI_CONNECTED);
 	oled_service_clean();
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
 	/* transform IP to human readable string */
