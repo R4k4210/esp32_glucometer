@@ -3,9 +3,11 @@
 static const char *TAG = "ADC";
 
 void adc_service_adc1_config(void){
+	ESP_LOGD(TAG, "Configuring ADC1");
     adc1_config_width(width);
     adc1_config_channel_atten(ADC1_6_CHANNEL, ADC1_ATTEN);
     adc1_config_channel_atten(ADC1_5_CHANNEL, ADC1_ATTEN);
+	ESP_LOGD(TAG, "ADC1 Configured");
 }
 
 int adc_service_adc1_read(int channel){

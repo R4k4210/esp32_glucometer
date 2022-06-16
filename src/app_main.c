@@ -25,7 +25,7 @@
 #define NO_OF_SECUENCES			2
 #define PERIOD_IN_MILLIS		4000
 #define LONG_PRESS_IN_SECONDS   10
-#define RESET_TIME_IN_SECONDS	20
+#define RESET_TIME_IN_SECONDS	30
 #define BAT_CALIBRATION			0.36
 #define BAT_VOLTAGE_CUTOFF		3.3
 #define BAT_MAX_VOLTAGE			4.2
@@ -92,7 +92,7 @@ void cpu_main(void *pvParameter){
 		if(is_initialized){
 			// Re-Read Button State After Debounce
 			if (!gpio_get_level(BTN_SENSE)){
-				//ESP_LOGI(TAG, "BTN Pressed Down.");
+				ESP_LOGI(TAG, "BTN Pressed Down.");
 				ticks = 0;
 				// Loop here while pressed until user lets go, or longer that set time
 				while ((!gpio_get_level(BTN_SENSE)) && (++ticks < LONG_PRESS_IN_SECONDS * 100)){
@@ -101,9 +101,7 @@ void cpu_main(void *pvParameter){
 				// Did fall here because user held a long press or let go for a short press
 				if (ticks >= LONG_PRESS_IN_SECONDS * 100){
 					ESP_LOGI(TAG, "Long Press");
-					if(is_wifi_connected && !is_measuring){
-						wifi_manager_disconnect_async();
-					}
+					wifi_manager_disconnect_async();
 				}else{
 					ESP_LOGI(TAG, "Short Press");
 					if(!is_measuring){
@@ -127,7 +125,7 @@ void cpu_main(void *pvParameter){
 			}
 		}
 		
-		vTaskDelay(pdMS_TO_TICKS(1000));
+		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	
 	//If we want to delete the task
@@ -255,8 +253,6 @@ void get_measurement(void){
 	if(is_wifi_connected && service_data.mqtt_subscribed){
 		strcpy(running_action, "ENVIANDO");
 		write_led = true;
-		//vTaskResume(write_actions_handler);
-		//oled_service_write("ENVIANDO...", O_PAGE_2, false);
 		write_json_message(avg_value);
 		//Pub to AWS 
 		mqtt_service_pub();
@@ -266,9 +262,9 @@ void get_measurement(void){
 		vTaskDelay(pdMS_TO_TICKS(2000));
 	}
 
+	oled_service_clean();
 	is_measuring = false;
 	write_led = false;
-	oled_service_clean();
 }
 
 void bat_level_check(void *pvParameter){
@@ -294,7 +290,6 @@ void bat_level_check(void *pvParameter){
 	vTaskDelete(NULL);
 }
 
-
 void write_actions(void *pvParameter){
 	for(;;){
 		vTaskDelay(pdMS_TO_TICKS(500));
@@ -313,7 +308,6 @@ void write_actions(void *pvParameter){
 	}
 	vTaskDelete(NULL);
 }
-
 
 void cb_connection_ok(void *pvParameter){
 	is_wifi_connected = true;
@@ -335,6 +329,6 @@ void cb_connection_ok(void *pvParameter){
 
 void cb_disconnected(void *pvParameter){
 	is_wifi_connected = false;
-	buzzer_service_sound(LARGE, WIFI_DISCONNECT);
+	//buzzer_service_sound(LARGE, WIFI_DISCONNECT);
 	mqtt_service_stop();
 }
