@@ -25,7 +25,7 @@
 #define NO_OF_SECUENCES			2
 #define PERIOD_IN_MILLIS		4000
 #define LONG_PRESS_IN_SECONDS   10
-#define RESET_TIME_IN_SECONDS	30
+#define RESET_TIME_IN_SECONDS	10
 #define BAT_CALIBRATION			0.36
 #define BAT_VOLTAGE_CUTOFF		3.3
 #define BAT_MAX_VOLTAGE			4.2
@@ -43,7 +43,7 @@ enum SoundTimes {
 
 enum SoundPeriod {
 	SHORT = 100,
-	LARGE = 300
+	LONG = 300
 };
 
 int last_state = HIGH;
@@ -58,14 +58,13 @@ bool bat_r_once = true;
 bool write_led = false;
 char running_action[16];
 uint16_t ticks = 0;
-TaskHandle_t write_actions_handler;
 
 extern mqtt_service_t service_data; //Extern reference the same value name and type in other .c file.
 
 void init_gpio_config(void);
 void write_json_message(int glucose);
 void get_measurement(void);
-void get_battery_level(void);
+void check_bat_lvl(void);
 void bat_level_check(void *pvParameter);
 void cb_connection_ok(void *pvParameter);
 void cb_disconnected(void *pvParameter);
@@ -76,15 +75,6 @@ void cpu_main(void *pvParameter){
 		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
 		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
-
-		/*
-		if(!is_measuring && is_initialized){
-			buzzer_service_sound(SHORT, MEASURING_START);
-			//strcpy(running_action, "MIDIENDO");
-			//vTaskResume(write_actions_handler);
-			get_measurement();
-		}
-		*/
 
 		// Debounce
 		vTaskDelay(pdMS_TO_TICKS(50));
@@ -101,34 +91,36 @@ void cpu_main(void *pvParameter){
 				// Did fall here because user held a long press or let go for a short press
 				if (ticks >= LONG_PRESS_IN_SECONDS * 100){
 					ESP_LOGI(TAG, "Long Press");
+					buzzer_service_sound(LONG, WIFI_DISCONNECT);
 					wifi_manager_disconnect_async();
+					ticks = 0;
 				}else{
 					ESP_LOGI(TAG, "Short Press");
 					if(!is_measuring){
 						buzzer_service_sound(SHORT, MEASURING_START);
+						oled_service_battery(33);
 						strcpy(running_action, "MIDIENDO");
 						write_led = true;
-						//vTaskResume(write_actions_handler);
 						get_measurement();
 					}
 				}
 				// Wait here if they are still holding it
-				// If you hold to reset, wifi will be disconnected
 				while(!gpio_get_level(BTN_SENSE)){
+					vTaskDelay(pdMS_TO_TICKS(10));
 					if(++ticks >= RESET_TIME_IN_SECONDS * 100){
 						ESP_LOGI(TAG, "BTN Reset.");
-						buzzer_service_sound(LARGE, FORCE_RESET);
+						buzzer_service_sound(LONG, FORCE_RESET);
 						esp_restart();
 					}
+					
 				}
-				//ESP_LOGI(TAG, "BTN Released.");
+				ESP_LOGI(TAG, "BTN Released.");
 			}
 		}
 		
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	
-	//If we want to delete the task
 	vTaskDelete(NULL);
 }
 
@@ -142,7 +134,6 @@ void app_main(void){
 	xTaskCreatePinnedToCore(&cpu_main, "cpu_main", 2048, NULL, 3, NULL, 1);
 	xTaskCreate(&bat_level_check, "bat_level_check", 2048, NULL, 3, NULL);
 	xTaskCreate(&write_actions, "write_actions", 2048, NULL, 4, NULL);
-	//vTaskSuspend(write_actions_handler);
 	is_initialized = true;
 }
 
@@ -153,7 +144,7 @@ void init_gpio_config(void){
 	gpio_set_pull_mode(LED_EMITER, GPIO_PULLUP_ONLY);
 	//Inputs
 	gpio_set_direction(BTN_SENSE, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BTN_SENSE, GPIO_PULLUP_ONLY); //If btn is connected to 3.3v, should be pull-down
+	gpio_set_pull_mode(BTN_SENSE, GPIO_PULLUP_ONLY);
 	ESP_LOGI(TAG, "Configuring analog GPIO");
 	adc_service_adc1_config();
 	ESP_LOGI(TAG, "Configuring LEDC GPIO");
@@ -182,7 +173,7 @@ void write_json_message(int glucose){
 	struct timeval tv_now;
 	gettimeofday(&tv_now, NULL);
     int64_t time_ms = (int64_t)tv_now.tv_sec * 1000LL + (int64_t)tv_now.tv_usec / 1000LL;
-	//ESP_LOGI(TAG, "The current date/time in Argentina in MS: %lld", (long long)time_ms);
+	ESP_LOGD(TAG, "The current date/time in Argentina in MS: %lld", (long long)time_ms);
 	cJSON_AddNumberToObject(service_data.mqtt_message_data, "timestamp", time_ms);
 	//root
 	cJSON_AddItemToObject(service_data.mqtt_message, "device", service_data.mqtt_message_device);
@@ -195,7 +186,6 @@ int get_millis(void){
 }
 
 void get_measurement(void){
-	ESP_LOGI(TAG, "Llamando por primera vez");
 	is_measuring = true;
 	float avg_value = 0;
 
@@ -205,8 +195,8 @@ void get_measurement(void){
 		int sensor_counter = 0;
 		int last_time = get_millis();
 
-		ESP_LOGI(TAG, "Last_Time %d", last_time);
-		ESP_LOGI(TAG, "Timesd %d", i);
+		ESP_LOGD(TAG, "Last_Time %d", last_time);
+		ESP_LOGD(TAG, "Timesd %d", i);
 
 		while((get_millis() - last_time) <= PERIOD_IN_MILLIS){
 			
@@ -219,7 +209,7 @@ void get_measurement(void){
 			if(sensor_value < min_value){
 				min_value = sensor_value;
 			}
-			ESP_LOGI(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
+			ESP_LOGD(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
 			if((get_millis() - last_time) % 500 == 0){
 				if(emiter_state == LOW){
 					gpio_set_level(LED_EMITER, HIGH);
@@ -232,9 +222,6 @@ void get_measurement(void){
 					if(sensor_counter == 3){
 						int difference = max_value - min_value;
 						avg_value += difference;
-						//oled_service_clean();
-						//float voltage = difference * 3.3 / 1023.0;
-						//ESP_LOGI(TAG, "Partial Glucose: %d mg/dl\tVoltage: %fV\n", difference, voltage);
 					}
 				}
 			}
@@ -242,7 +229,7 @@ void get_measurement(void){
 	}
 	
 	avg_value /= NO_OF_SECUENCES;
-	ESP_LOGI(TAG, "Final Glucose: %g mg/dl", avg_value);
+	ESP_LOGD(TAG, "Final Glucose: %g mg/dl", avg_value);
 	write_led = false;
 	buzzer_service_sound(SHORT, MEASURING_END);
 	oled_service_clean();
@@ -271,40 +258,46 @@ void bat_level_check(void *pvParameter){
 	for(;;){
 		vTaskDelay(pdMS_TO_TICKS(300000));
 		if(!is_measuring){
-			uint32_t adc_value = adc_service_adc1_read(ADC1_5_CHANNEL);
-			float voltage = ((adc_value * BAT_VOLTAGE_CUTOFF) / BAT_ADC_RESOLUTION) * 2 + BAT_CALIBRATION;
-			float f_bat_lvl = (voltage - BAT_VOLTAGE_CUTOFF) * (100 - 0) / (BAT_MAX_VOLTAGE - BAT_VOLTAGE_CUTOFF) + 0;
-
-			if (bat_r_once){
-				bat_r_once = false;
-				battery_level = (int)(f_bat_lvl - .5);
-			}
-			
-			if ((battery_level > battery_level + 5 || battery_level < battery_level - 5)){
-				battery_level = (int)(f_bat_lvl - .5);
-			}
-		
-			ESP_LOGI(TAG, "Raw: %d\tVoltage: %f\nBattery Level: %d\n", adc_value, voltage, battery_level);
+			check_bat_lvl();
 		}
 	}
 	vTaskDelete(NULL);
+}
+
+void check_bat_lvl(void){
+	uint32_t adc_value = adc_service_adc1_read(ADC1_5_CHANNEL);
+	float voltage = ((adc_value * BAT_VOLTAGE_CUTOFF) / BAT_ADC_RESOLUTION) * 2 + BAT_CALIBRATION;
+	float f_bat_lvl = (voltage - BAT_VOLTAGE_CUTOFF) * (100 - 0) / (BAT_MAX_VOLTAGE - BAT_VOLTAGE_CUTOFF) + 0;
+
+	if (bat_r_once){
+		bat_r_once = false;
+		battery_level = (int)(f_bat_lvl - .5);
+	}
+	
+	if ((battery_level > battery_level + 5 || battery_level < battery_level - 5)){
+		battery_level = (int)(f_bat_lvl - .5);
+	}
+
+	ESP_LOGD(TAG, "Raw: %d\tVoltage: %f\nBattery Level: %d\n", adc_value, voltage, battery_level);
 }
 
 void write_actions(void *pvParameter){
 	for(;;){
 		vTaskDelay(pdMS_TO_TICKS(500));
 		if(write_led){
-			char m_msg[3][3] = {".", "..", "..."};
+			char m_msg[3][3] = {".  ", ".. ", "..."};
 			char m_dest[16];
 			strcpy(m_dest, running_action);
 			if((action_counter+1) < 4){
 				strncat(m_dest, m_msg[action_counter++], 3);
 			}
-			oled_service_write(m_dest, O_PAGE_2, false);	
+
+			oled_service_write(m_dest, O_PAGE_2, false);
+			
 			if(action_counter == 3){
 				action_counter = 0;
 			}
-		}	
+		}
 	}
 	vTaskDelete(NULL);
 }
@@ -314,12 +307,15 @@ void cb_connection_ok(void *pvParameter){
 	oled_service_write("WIFI CONECTADO", O_PAGE_2, false);
 	buzzer_service_sound(SHORT, WIFI_CONNECTED);
 	oled_service_clean();
+
 	ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
 	/* transform IP to human readable string */
 	char str_ip[16];
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
 	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
+
 	mqtt_service_start();
+	
 	sntp_setoperatingmode(SNTP_OPMODE_POLL);
 	sntp_setservername(0, "pool.ntp.org");
 	sntp_init();
@@ -329,6 +325,5 @@ void cb_connection_ok(void *pvParameter){
 
 void cb_disconnected(void *pvParameter){
 	is_wifi_connected = false;
-	//buzzer_service_sound(LARGE, WIFI_DISCONNECT);
 	mqtt_service_stop();
 }

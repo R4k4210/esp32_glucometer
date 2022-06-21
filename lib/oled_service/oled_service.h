@@ -24,5 +24,6 @@ void oled_service_write(char text[], int position, bool invert);
 void oled_service_measure(float glucose);
 void oled_service_clean(void);
 void oled_service_welcome(void);
+void oled_service_battery(int battery);
 
 #endif /* _OLED_SERVICE_H_ */

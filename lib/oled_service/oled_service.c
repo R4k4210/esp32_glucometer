@@ -34,6 +34,54 @@ static uint8_t ise[] = {
 	0b00000000, 0b01100110, 0b00000000,
 };
 
+static uint8_t bat_full[] = {
+	0b01111111, 0b11111111, 0b11111000,
+	0b11000000, 0b00000000, 0b00001100,
+	0b11001111, 0b00111100, 0b11001100,
+	0b11001111, 0b00111100, 0b11001111,
+	0b11001110, 0b01111001, 0b11001111,
+	0b11001110, 0b01111001, 0b11001111,
+	0b11001100, 0b11110011, 0b11001111,
+	0b11001100, 0b11110011, 0b11001100,
+	0b11000000, 0b00000000, 0b00001100,
+	0b01111111, 0b11111111, 0b11111000,
+	0b00000000, 0b00000000, 0b00000000,
+	0b00000000, 0b00000000, 0b00000000,
+	0b00000000, 0b00000000, 0b00000000,
+};
+
+static uint8_t bat_mid[] = {
+	0b01111111, 0b11111111, 0b11111000,
+	0b11000000, 0b00000000, 0b00001100,
+	0b11001111, 0b00111100, 0b00001100,
+	0b11001111, 0b00111100, 0b00001111,
+	0b11001110, 0b01111000, 0b00001111,
+	0b11001110, 0b01111000, 0b00001111,
+	0b11001100, 0b11110000, 0b00001111,
+	0b11001100, 0b11110000, 0b00001100,
+	0b11000000, 0b00000000, 0b00001100,
+	0b01111111, 0b11111111, 0b11111000,
+	0b00000000, 0b00000000, 0b00000000,
+	0b00000000, 0b00000000, 0b00000000,
+	0b00000000, 0b00000000, 0b00000000,
+};
+
+static uint8_t bat_low[] = {
+	0b01111111, 0b11111111, 0b11111000,
+	0b11000000, 0b00000000, 0b00001100,
+	0b11001111, 0b00000000, 0b00001100,
+	0b11001111, 0b00000000, 0b00001111,
+	0b11001110, 0b00000000, 0b00001111,
+	0b11001110, 0b00000000, 0b00001111,
+	0b11001100, 0b00000000, 0b00001111,
+	0b11001100, 0b00000000, 0b00001100,
+	0b11000000, 0b00000000, 0b00001100,
+	0b01111111, 0b11111111, 0b11111000,
+	0b00000000, 0b00000000, 0b00000000,
+	0b00000000, 0b00000000, 0b00000000,
+	0b00000000, 0b00000000, 0b00000000,
+};
+
 void oled_service_init(void){
     ESP_LOGI(TAG, "Init I2C interface as Master...");
 	i2c_master_init(&dev, OLED_SDA, OLED_SCL, -1);
@@ -47,9 +95,28 @@ void oled_service_clean(void){
 }
 
 void oled_service_write(char text[], int position, bool invert){
-	ssd1306_clear_screen(&dev, false);
 	ssd1306_contrast(&dev, 0xff);
 	ssd1306_display_text(&dev, position, text, strlen(text), invert);
+	vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+void oled_service_battery(int bat_lvl){
+	char bat_msg[16];
+	sprintf(bat_msg, "         %d    ", bat_lvl);
+	ssd1306_display_text(&dev, O_PAGE_0, bat_msg, 16, false);
+
+	int bitmapWidth = 3*8;
+	int width = ssd1306_get_width(&dev);
+	int xpos = width - 18;
+	xpos = xpos - bitmapWidth/2;
+
+	if(bat_lvl >= 66){
+		ssd1306_bitmaps(&dev, xpos, 0, bat_full, 24, 13, false);
+	}else if(bat_lvl > 33 && bat_lvl < 66){
+		ssd1306_bitmaps(&dev, xpos, 0, bat_mid, 24, 13, false);
+	}else{
+		ssd1306_bitmaps(&dev, xpos, 0, bat_low, 24, 13, false);
+	}
 }
 
 void oled_service_measure(float glucose){
