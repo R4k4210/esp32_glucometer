@@ -39,42 +39,42 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
-            ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+            ESP_LOGD(TAG, "MQTT_EVENT_CONNECTED");
             msg_id = esp_mqtt_client_subscribe(client, AWS_PUBLISH_TOPIC, 0);
-            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+            ESP_LOGD(TAG, "sent subscribe successful, msg_id=%d", msg_id);
             //msg_id = esp_mqtt_client_unsubscribe(client, AWS_PUBLISH_TOPIC);
-            //ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+            //ESP_LOGD(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
             break;
         case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+            ESP_LOGD(TAG, "MQTT_EVENT_DISCONNECTED");
             break;
         case MQTT_EVENT_SUBSCRIBED:
-            ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+            ESP_LOGD(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
             service_data.mqtt_subscribed = true;
             break;
         case MQTT_EVENT_UNSUBSCRIBED:
-            ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
+            ESP_LOGD(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
             service_data.mqtt_subscribed = false;
             break;
         case MQTT_EVENT_PUBLISHED:
-            ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            ESP_LOGD(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_DATA:
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+            ESP_LOGD(TAG, "MQTT_EVENT_DATA");
             printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
             printf("DATA=%.*s\r\n", event->data_len, event->data);
             break;
         case MQTT_EVENT_ERROR:
-            ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+            ESP_LOGD(TAG, "MQTT_EVENT_ERROR");
             if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
                 log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
                 log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
                 log_error_if_nonzero("captured as transport's socket errno",  event->error_handle->esp_transport_sock_errno);
-                ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+                ESP_LOGD(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
             }
             break;
         default:
-            ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+            ESP_LOGD(TAG, "Other event id:%d", event->event_id);
             break;
     }
 }
@@ -94,9 +94,9 @@ void mqtt_service_pub(void){
     if(service_data.mqtt_subscribed){
         char *stringify_message = cJSON_Print(service_data.mqtt_message);
         int sended = esp_mqtt_client_publish(service_data.mqtt_client, AWS_PUBLISH_TOPIC, stringify_message, 0, 0, 0);
-        ESP_LOGI(TAG, "Sent publish successful, msg_id=%d", sended);
+        ESP_LOGD(TAG, "Sent publish successful, msg_id=%d", sended);
         cJSON_Delete(service_data.mqtt_message);
     }else{
-        ESP_LOGI(TAG, "MQTT is not suscribed");
+        ESP_LOGD(TAG, "MQTT is not suscribed");
     }
 }

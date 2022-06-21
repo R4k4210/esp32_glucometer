@@ -6,9 +6,9 @@
 #include "cJSON.h"
 
 
-#define MQTT_THING_NAME       CONFIG_AWS_THING_NAME
-#define MQTT_HOST             CONFIG_MQTT_BROKER_HOST
-#define MQTT_PORT             CONFIG_MQTT_BROKER_PORT
+#define MQTT_THING_NAME       "ESP32_BLOOD_GLUCOMETER"
+#define MQTT_HOST             "2ldx62x5vd0yr-ats.iot.us-west-2.amazonaws.com"
+#define MQTT_PORT             8883
 
 #define AWS_PUBLISH_TOPIC     "bldgluco/v1/pub"
 #define AWS_SUBSCRIBE_TOPIC   "bldgluco/v1/sub"

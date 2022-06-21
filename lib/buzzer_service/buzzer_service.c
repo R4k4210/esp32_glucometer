@@ -28,6 +28,7 @@ void buzzer_service_init(void){
 }
 
 void buzzer_service_sound(int duration, int times){
+    ESP_LOGD(TAG, "Bzzzzz");
     for(int i=0; i<times; i++){
         ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY); // 0x7F - 12% duty - play here for your speaker or buzzer
         ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);

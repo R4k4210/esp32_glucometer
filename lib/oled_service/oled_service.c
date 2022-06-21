@@ -83,11 +83,11 @@ static uint8_t bat_low[] = {
 };
 
 void oled_service_init(void){
-    ESP_LOGI(TAG, "Init I2C interface as Master...");
+    ESP_LOGD(TAG, "Init I2C interface as Master...");
 	i2c_master_init(&dev, OLED_SDA, OLED_SCL, -1);
-    ESP_LOGI(TAG, "SSD1306 128x32 init...");
+    ESP_LOGD(TAG, "SSD1306 128x32 init...");
 	ssd1306_init(&dev, 128, 32);
-	ESP_LOGI(TAG, "SSD1306 128x32 config finished");
+	ESP_LOGD(TAG, "SSD1306 128x32 config finished");
 }
 
 void oled_service_clean(void){

@@ -73,8 +73,8 @@ void write_actions(void *pvParameter);
 void cpu_main(void *pvParameter){
 	for(;;){
 		//uint freeRAM = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-        //ESP_LOGI(TAG, "free RAM is %d.", freeRAM);
-		//ESP_LOGI(TAG, "free heap: %d",esp_get_free_heap_size());
+        //ESP_LOGD(TAG, "free RAM is %d.", freeRAM);
+		//ESP_LOGD(TAG, "free heap: %d",esp_get_free_heap_size());
 
 		// Debounce
 		vTaskDelay(pdMS_TO_TICKS(50));
@@ -82,7 +82,7 @@ void cpu_main(void *pvParameter){
 		if(is_initialized){
 			// Re-Read Button State After Debounce
 			if (!gpio_get_level(BTN_SENSE)){
-				ESP_LOGI(TAG, "BTN Pressed Down.");
+				ESP_LOGD(TAG, "BTN Pressed Down.");
 				ticks = 0;
 				// Loop here while pressed until user lets go, or longer that set time
 				while ((!gpio_get_level(BTN_SENSE)) && (++ticks < LONG_PRESS_IN_SECONDS * 100)){
@@ -90,15 +90,15 @@ void cpu_main(void *pvParameter){
 				} 
 				// Did fall here because user held a long press or let go for a short press
 				if (ticks >= LONG_PRESS_IN_SECONDS * 100){
-					ESP_LOGI(TAG, "Long Press");
+					ESP_LOGD(TAG, "Long Press");
 					buzzer_service_sound(LONG, WIFI_DISCONNECT);
 					wifi_manager_disconnect_async();
 					ticks = 0;
 				}else{
-					ESP_LOGI(TAG, "Short Press");
+					ESP_LOGD(TAG, "Short Press");
 					if(!is_measuring){
 						buzzer_service_sound(SHORT, MEASURING_START);
-						oled_service_battery(33);
+						oled_service_battery(battery_level);
 						strcpy(running_action, "MIDIENDO");
 						write_led = true;
 						get_measurement();
@@ -108,13 +108,13 @@ void cpu_main(void *pvParameter){
 				while(!gpio_get_level(BTN_SENSE)){
 					vTaskDelay(pdMS_TO_TICKS(10));
 					if(++ticks >= RESET_TIME_IN_SECONDS * 100){
-						ESP_LOGI(TAG, "BTN Reset.");
+						ESP_LOGD(TAG, "BTN Reset.");
 						buzzer_service_sound(LONG, FORCE_RESET);
 						esp_restart();
 					}
 					
 				}
-				ESP_LOGI(TAG, "BTN Released.");
+				ESP_LOGD(TAG, "BTN Released.");
 			}
 		}
 		
@@ -138,18 +138,18 @@ void app_main(void){
 }
 
 void init_gpio_config(void){
-	ESP_LOGI(TAG, "Configuring digital GPIO");
+	ESP_LOGD(TAG, "Configuring digital GPIO");
 	//Outputs
 	gpio_set_direction(LED_EMITER, GPIO_MODE_OUTPUT);	
 	gpio_set_pull_mode(LED_EMITER, GPIO_PULLUP_ONLY);
 	//Inputs
 	gpio_set_direction(BTN_SENSE, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(BTN_SENSE, GPIO_PULLUP_ONLY);
-	ESP_LOGI(TAG, "Configuring analog GPIO");
+	ESP_LOGD(TAG, "Configuring analog GPIO");
 	adc_service_adc1_config();
-	ESP_LOGI(TAG, "Configuring LEDC GPIO");
+	ESP_LOGD(TAG, "Configuring LEDC GPIO");
 	buzzer_service_init();
-   	ESP_LOGI(TAG, "LEDC config finished.");
+   	ESP_LOGD(TAG, "LEDC config finished.");
 }
 
 void write_json_message(int glucose){
@@ -162,7 +162,7 @@ void write_json_message(int glucose){
 	char mac_str[18];
 	esp_read_mac(mac, ESP_MAC_WIFI_STA); 
 	snprintf(mac_str,18, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-	//ESP_LOGI(TAG, "MAC ADDRESS: %s", mac_str);
+	//ESP_LOGD(TAG, "MAC ADDRESS: %s", mac_str);
 	cJSON_AddStringToObject(service_data.mqtt_message_device, "version", "1.0.0");
 	cJSON_AddStringToObject(service_data.mqtt_message_device, "mac_address", mac_str);
 	cJSON_AddStringToObject(service_data.mqtt_message_device, "type", "glucometer");
@@ -238,6 +238,7 @@ void get_measurement(void){
 	oled_service_clean();
 
 	if(is_wifi_connected && service_data.mqtt_subscribed){
+		oled_service_battery(battery_level);
 		strcpy(running_action, "ENVIANDO");
 		write_led = true;
 		write_json_message(avg_value);
@@ -304,6 +305,7 @@ void write_actions(void *pvParameter){
 
 void cb_connection_ok(void *pvParameter){
 	is_wifi_connected = true;
+	oled_service_battery(battery_level);
 	oled_service_write("WIFI CONECTADO", O_PAGE_2, false);
 	buzzer_service_sound(SHORT, WIFI_CONNECTED);
 	oled_service_clean();
@@ -312,7 +314,7 @@ void cb_connection_ok(void *pvParameter){
 	/* transform IP to human readable string */
 	char str_ip[16];
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
-	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
+	ESP_LOGD(TAG, "I have a connection and my IP is %s!", str_ip);
 
 	mqtt_service_start();
 	

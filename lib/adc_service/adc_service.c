@@ -17,6 +17,6 @@ int adc_service_adc1_read(int channel){
 		adc_reading += adc1_get_raw((adc1_channel_t)channel);
 	}
 	adc_reading /= NO_OF_SAMPLES;
-    
+    ESP_LOGD(TAG, "ADC Reading");
     return adc_reading;
 }
