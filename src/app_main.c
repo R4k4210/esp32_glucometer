@@ -193,13 +193,14 @@ void get_measurement(void){
 		int max_value = 0;
 		int min_value = 1023;
 		int sensor_counter = 0;
-		int last_time = get_millis();
+		int period_last_time = get_millis();
+		int sense_last_time = get_millis();
 
-		ESP_LOGD(TAG, "Last_Time %d", last_time);
+		ESP_LOGD(TAG, "Last_Time %d", period_last_time);
 		ESP_LOGD(TAG, "Timesd %d", i);
 
-		while((get_millis() - last_time) <= PERIOD_IN_MILLIS){
-			
+		while((get_millis() - period_last_time) <= PERIOD_IN_MILLIS){
+
 			int sensor_value = adc_service_adc1_read(ADC1_6_CHANNEL);
 			vTaskDelay(pdMS_TO_TICKS(10));
 
@@ -209,8 +210,9 @@ void get_measurement(void){
 			if(sensor_value < min_value){
 				min_value = sensor_value;
 			}
+			
 			ESP_LOGD(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
-			if((get_millis() - last_time) % 500 == 0){
+			if((get_millis() - sense_last_time) > 500){
 				if(emiter_state == LOW){
 					gpio_set_level(LED_EMITER, HIGH);
 					emiter_state = HIGH;
@@ -224,6 +226,8 @@ void get_measurement(void){
 						avg_value += difference;
 					}
 				}
+
+				sense_last_time = get_millis();
 			}
 		}
 	}
@@ -231,6 +235,7 @@ void get_measurement(void){
 	avg_value /= NO_OF_SECUENCES;
 	ESP_LOGD(TAG, "Final Glucose: %g mg/dl", avg_value);
 	write_led = false;
+	
 	buzzer_service_sound(SHORT, MEASURING_END);
 	oled_service_clean();
 	oled_service_measure(avg_value);
