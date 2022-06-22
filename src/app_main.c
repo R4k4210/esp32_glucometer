@@ -194,7 +194,7 @@ void get_measurement(void){
 		int min_value = 1023;
 		int sensor_counter = 0;
 		int period_last_time = get_millis();
-		int sense_last_time = get_millis();
+		int sense_last_time = period_last_time;
 
 		ESP_LOGD(TAG, "Last_Time %d", period_last_time);
 		ESP_LOGD(TAG, "Timesd %d", i);
@@ -212,6 +212,7 @@ void get_measurement(void){
 			}
 			
 			ESP_LOGD(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
+			
 			if((get_millis() - sense_last_time) > 500){
 				if(emiter_state == LOW){
 					gpio_set_level(LED_EMITER, HIGH);
