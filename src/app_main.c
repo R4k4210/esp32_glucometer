@@ -135,6 +135,7 @@ void app_main(void){
 	xTaskCreate(&bat_level_check, "bat_level_check", 2048, NULL, 3, NULL);
 	xTaskCreate(&write_actions, "write_actions", 2048, NULL, 4, NULL);
 	is_initialized = true;
+	check_bat_lvl();
 }
 
 void init_gpio_config(void){
