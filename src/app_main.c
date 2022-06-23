@@ -211,7 +211,7 @@ void get_measurement(void){
 				min_value = sensor_value;
 			}
 			
-			ESP_LOGD(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
+			ESP_LOGI(TAG, "Sensor value -->> %d\tMinValue -> %d\tMaxValue -> %d", sensor_value, min_value, max_value);
 			
 			if((get_millis() - sense_last_time) > 500){
 				if(emiter_state == LOW){
