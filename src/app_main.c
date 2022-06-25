@@ -11,6 +11,8 @@
 #include "mqtt_client.h"
 #include "wifi_manager.h"
 #include "esp_sntp.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 //Custom libraries
 #include "mqtt_service.h"
 #include "adc_service.h"
@@ -276,14 +278,21 @@ void check_bat_lvl(void){
 	uint32_t adc_value = adc_service_adc1_read(ADC1_5_CHANNEL);
 	float voltage = ((adc_value * BAT_VOLTAGE_CUTOFF) / BAT_ADC_RESOLUTION) * 2 + BAT_CALIBRATION;
 	float f_bat_lvl = (voltage - BAT_VOLTAGE_CUTOFF) * (100 - 0) / (BAT_MAX_VOLTAGE - BAT_VOLTAGE_CUTOFF) + 0;
+	int bat_lvl = (int)(f_bat_lvl - .5);
 
-	if (bat_r_once){
-		bat_r_once = false;
-		battery_level = (int)(f_bat_lvl - .5);
-	}
-	
-	if ((battery_level > battery_level + 5 || battery_level < battery_level - 5)){
-		battery_level = (int)(f_bat_lvl - .5);
+	if(bat_lvl <= 0){
+		battery_level = 0;
+	}else if(bat_lvl >= 100){
+		battery_level = 100;
+	} else {
+		if (bat_r_once){
+			bat_r_once = false;
+			battery_level = bat_lvl;
+		}
+		
+		if ((battery_level > battery_level + 5 || battery_level < battery_level - 5)){
+			battery_level = bat_lvl;
+		}
 	}
 
 	ESP_LOGD(TAG, "Raw: %d\tVoltage: %f\nBattery Level: %d\n", adc_value, voltage, battery_level);
